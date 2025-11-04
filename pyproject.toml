@@ -5,8 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "marimo>=0.17.6",
+    "matplotlib>=3.10.7",
     "propagator",
+    "rasterio>=1.4.3",
 ]
 
 [tool.uv.sources]
-propagator = { git = "https://github.com/CIMAFoundation/propagator_sim" }
+propagator = { git = "https://github.com/CIMAFoundation/propagator_sim", rev = "6674076" }

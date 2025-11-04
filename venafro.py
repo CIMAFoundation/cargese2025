@@ -13,17 +13,14 @@ def _():
     from propagator.core import Propagator, BoundaryConditions, PropagatorOutOfBoundsError
     from propagator.core.constants import FUEL_SYSTEM_LEGACY_DICT
     import rasterio as rio
-
+    from utils import plot_results
     return (
         BoundaryConditions,
-        FUEL_SYSTEM_LEGACY_DICT,
         Propagator,
         PropagatorOutOfBoundsError,
         mo,
-        np,
-        plt,
+        plot_results,
         rio,
-        timedelta,
     )
 
 
@@ -34,24 +31,6 @@ def _(mo):
     Simple example of using Propagator CORE to simulate a real fire.
     """)
     return
-
-
-@app.cell
-def _(np):
-    from matplotlib.colors import ListedColormap, BoundaryNorm
-    colors = [
-        "#228B22",  # 1: broadleaves - forest green
-        "#7CFC00",  # 2: shrubs - lawn green
-        "#D3D3D3",  # 3: non-vegetated - light gray
-        "#ADFF2F",  # 4: grassland - green-yellow
-        "#006400",  # 5: conifers - dark green
-        "#FFD700",  # 6: agro-forestry - gold
-        "#8B4513",  # 7: non-fire prone forests - brown
-    ]
-    cmap = ListedColormap(colors)
-    bounds = np.arange(0.5, len(colors) + 1.5)
-    norm = BoundaryNorm(bounds, cmap.N)
-    return cmap, colors, norm
 
 
 @app.cell
@@ -109,7 +88,6 @@ def _(
     Propagator,
     dem,
     fuel_moisture_slider,
-    np,
     realizations_slider,
     timesteps_slider,
     veg,
@@ -123,15 +101,13 @@ def _(
         veg=veg,
         realizations=realizations_slider.value
     )
-    ignition_mask = np.zeros(veg.shape)
-    ignition_mask[IGNITION_POINT] = 1
     simulator.set_boundary_conditions(
         BoundaryConditions(
             time=0,
-            ignition_mask=ignition_mask,
-            wind_dir=np.full(veg.shape, wind_dir_slider.value),
-            wind_speed=np.full(veg.shape, wind_speed_slider.value),
-            moisture=np.full(veg.shape, fuel_moisture_slider.value)
+            ignitions=[IGNITION_POINT],
+            wind_dir=wind_dir_slider.value,
+            wind_speed=wind_speed_slider.value,
+            moisture=fuel_moisture_slider.value
         )
     )
     return simulator, time_limit
@@ -139,18 +115,12 @@ def _(
 
 @app.cell
 def _(
-    FUEL_SYSTEM_LEGACY_DICT,
     PropagatorOutOfBoundsError,
-    cmap,
-    colors,
     mo,
-    norm,
-    plt,
+    plot_results,
     scar,
     simulator,
     time_limit,
-    timedelta,
-    veg,
 ):
     with mo.status.spinner(title="Running ...") as _spinner:
         while True:
@@ -167,16 +137,7 @@ def _(
                 _spinner.update(subtitle="Simulation stopped: fire reached out of bounds area.")
                 break
 
-        output = simulator.get_output()
-        fire_probability = output.fire_probability
-        ax = plt.imshow(veg, cmap=cmap, norm=norm)
-        cbar = plt.colorbar(ax, ticks=range(1, len(colors) + 1))
-        cbar.ax.set_yticklabels([f"{i}: {FUEL_SYSTEM_LEGACY_DICT[i]['name']}" for i in range(1, len(colors) + 1)])
-        cbar.set_label("Vegetation Type", rotation=270, labelpad=15)
-        plt.title(label=f"Probability at time {timedelta(seconds=int(simulator.time))}")
-
-        plt.contour(fire_probability, levels=[0.5], colors="red", linewidths=2)
-        plt.contour(scar, levels=[0.5], colors='violet', linewidths=2)
+        ax = plot_results(simulator, scar)
 
     ax
     return
